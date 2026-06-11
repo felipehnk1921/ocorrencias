@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Ocorrências Heilo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="p-8">
+
+    <div id="telaLogin" class="max-w-md mx-auto mt-20 p-8 border-2 border-black rounded-2xl shadow-2xl">
+        <h2 class="text-2xl font-black text-center mb-6">LOGIN</h2>
+        <input type="text" id="userLogin" placeholder="Usuário" class="w-full p-3 border-2 border-black mb-4 rounded-lg">
+        <input type="password" id="senhaLogin" placeholder="Senha" class="w-full p-3 border-2 border-black mb-4 rounded-lg">
+        <button onclick="validarLogin()" class="w-full bg-black text-white py-3 rounded-lg font-bold">ACESSAR SISTEMA</button>
+    </div>
+
+    <div id="conteudoSistema" class="hidden">
+        <h1 id="tituloPrincipal" class="text-center text-3xl font-black uppercase mb-8"></h1>
+        
+        <nav class="flex justify-center gap-4 mb-8">
+            <button onclick="trocarTela('telaOperacao')" class="bg-black text-white px-6 py-2 rounded-full font-bold">OPERAÇÃO</button>
+            <button onclick="trocarTela('telaFinalizado')" class="bg-black text-white px-6 py-2 rounded-full font-bold">FINALIZADOS</button>
+            <button id="btnConfig" onclick="trocarTela('telaConfig')" class="hidden bg-black text-white px-6 py-2 rounded-full font-bold">CONFIGURAÇÕES</button>
+        </nav>
+
+        <div id="telaOperacao" class="max-w-6xl mx-auto space-y-8">
+            <div class="bg-gray-100 p-6 rounded-2xl border border-black">
+                <h2 class="font-bold mb-4">➕ Registrar Nova Ocorrência</h2>
+                <form id="formOcorrencia" class="space-y-4">
+                    <div class="grid grid-cols-3 gap-4">
+                        <select id="sProcesso" class="p-2 border border-black"></select>
+                        <select id="sTipoDT" class="p-2 border border-black"></select>
+                        <select id="sLocal" class="p-2 border border-black"><option>INTERNO</option><option>EXTERNO</option></select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <input type="text" id="numDT" placeholder="DT (8 números)" maxlength="8" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="p-2 border border-black" required>
+                        <input type="text" id="motorista" placeholder="Nome do Motorista" class="p-2 border border-black" required>
+                    </div>
+                    
+                    <div>
+                        <input list="listaProblemas" id="sProblema" placeholder="🔍 Digite para pesquisar o problema..." class="w-full p-2 border-2 border-black rounded-lg" required>
+                        <datalist id="listaProblemas"></datalist>
+                    </div>
+
+                    <textarea id="desc" placeholder="Descrição detalhada..." class="w-full p-2 border border-black h-24"></textarea>
+                    <button type="submit" class="w-full bg-black text-white py-3 rounded-lg font-bold">REGISTRAR PENDÊNCIA</button>
+                </form>
+            </div>
+            
+            <div class="bg-gray-100 p-6 rounded-2xl border border-black overflow-x-auto">
+                <h2 class="text-xl font-bold mb-4">Ocorrências Pendentes</h2>
+                <table class="w-full text-left border-collapse text-sm border border-black">
+                    <thead><tr class="border-b border-black bg-gray-200">
+                        <th class="p-2">Data/Hora</th><th class="p-2">DT</th><th class="p-2">Processo</th><th class="p-2">Problema</th><th class="p-2">Motorista</th><th class="p-2">Local</th><th class="p-2">Descrição</th><th class="p-2">Usuário</th><th class="p-2">Status</th>
+                    </tr></thead>
+                    <tbody id="corpoTabelaTurno"></tbody>
+                </table>
+                <button onclick="copiarParaWhatsApp()" class="mt-4 bg-green-600 text-white font-bold py-2 px-6 rounded-lg">📋 COPIAR PARA WHATSAPP</button>
+            </div>
+        </div>
+
+        <div id="telaFinalizado" class="hidden max-w-6xl mx-auto bg-gray-100 p-6 rounded-2xl border border-black overflow-x-auto">
+            <h2 class="text-xl font-bold mb-4">✅ Finalizadas</h2>
+            <table class="w-full text-left border-collapse text-sm border border-black">
+                <thead><tr class="border-b border-black bg-gray-200">
+                    <th class="p-2">Data/Hora</th><th class="p-2">DT</th><th class="p-2">Processo</th><th class="p-2">Problema</th><th class="p-2">Motorista</th><th class="p-2">Local</th><th class="p-2">Usuário</th><th class="p-2">Descrição</th>
+                </tr></thead>
+                <tbody id="corpoTabelaFinalizado"></tbody>
+            </table>
+            <div class="mt-4 flex gap-4">
+                <button id="btnExportar" onclick="exportarParaExcel()" class="hidden bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">📥 EXPORTAR PARA EXCEL</button>
+                <button id="btnLimparFinalizados" onclick="limparFinalizados()" class="hidden bg-red-600 text-white font-bold py-2 px-6 rounded-lg">🗑️ LIMPAR FINALIZADOS</button>
+            </div>
+        </div>
+
+        <div id="telaConfig" class="hidden max-w-6xl mx-auto space-y-6">
+            <div class="grid grid-cols-3 gap-6">
+                <div class="p-4 border border-black bg-gray-100"><h3 class="font-bold">Processos</h3><input id="inpP" class="border border-black w-full p-1"><button onclick="adicionar('processos', 'inpP')" class="bg-black text-white w-full mt-1">+</button><ul id="listProcessos"></ul></div>
+                <div class="p-4 border border-black bg-gray-100"><h3 class="font-bold">Tipos DT</h3><input id="inpDT" class="border border-black w-full p-1"><button onclick="adicionar('tiposDT', 'inpDT')" class="bg-black text-white w-full mt-1">+</button><ul id="listTiposDT"></ul></div>
+                <div class="p-4 border border-black bg-gray-100"><h3 class="font-bold">Problemas</h3><input id="inpPro" class="border border-black w-full p-1"><button onclick="adicionar('problemas', 'inpPro')" class="bg-black text-white w-full mt-1">+</button><ul id="listProblemas"></ul></div>
+            </div>
+            <div class="p-6 border border-black bg-gray-100">
+                <h3 class="font-bold mb-2">👤 Gestão de Usuários</h3>
+                <input id="newU" placeholder="User" class="border border-black p-1">
+                <input id="newP" placeholder="Senha" class="border border-black p-1">
+                <select id="newRole"><option>Operador</option><option>Admin</option></select>
+                <button onclick="adicionarUsuario()" class="bg-black text-white px-4 py-1">CRIAR</button>
+                <ul id="listaUsuarios" class="mt-4"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dataAtual = new Date();
+        const mes = dataAtual.toLocaleString('pt-BR', { month: 'long' });
+        const ano = dataAtual.getFullYear();
+        document.getElementById('tituloPrincipal').innerText = `OCORRÊNCIAS HEILO - ${mes.toUpperCase()} - ${ano}`;
+
+        let users = JSON.parse(localStorage.getItem('users')) || [{u: 'admin', p: '123', role: 'Admin'}];
+        let db = JSON.parse(localStorage.getItem('configuracoes')) || { processos: ['VENDA'], tiposDT: ['Y001'], problemas: ['Atraso'] };
+        let ocorrencias = JSON.parse(localStorage.getItem('ocorrencias')) || [];
+        let currentUser = null;
+
+        function validarLogin() {
+            const u = document.getElementById('userLogin').value;
+            const p = document.getElementById('senhaLogin').value;
+            const user = users.find(x => x.u === u && x.p === p);
+            if(user) { currentUser = user; document.getElementById('telaLogin').classList.add('hidden'); document.getElementById('conteudoSistema').classList.remove('hidden'); if(currentUser.role === 'Admin') document.getElementById('btnConfig').classList.remove('hidden'); atualizarUI(); } else { alert("Acesso Negado!"); }
+        }
+
+        function trocarTela(id) { if(id === 'telaConfig' && currentUser.role !== 'Admin') return alert("Acesso negado!"); ['telaOperacao', 'telaFinalizado', 'telaConfig'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
+
+        function atualizarUI() {
+            document.getElementById('sProcesso').innerHTML = db.processos.map(x => `<option>${x}</option>`).join('');
+            document.getElementById('sTipoDT').innerHTML = db.tiposDT.map(x => `<option>${x}</option>`).join('');
+            document.getElementById('listaProblemas').innerHTML = db.problemas.map(x => `<option value="${x}">`).join('');
+            document.getElementById('listProcessos').innerHTML = db.processos.map(x => `<li>${x}</li>`).join('');
+            document.getElementById('listTiposDT').innerHTML = db.tiposDT.map(x => `<li>${x}</li>`).join('');
+            document.getElementById('listProblemas').innerHTML = db.problemas.map(x => `<li>${x}</li>`).join('');
+            document.getElementById('listaUsuarios').innerHTML = users.map((x, i) => `<li>${x.u} (${x.role}) ${currentUser.role === 'Admin' && x.u !== 'admin' ? `<button onclick="excluirUsuario(${i})" class="text-red-600 ml-2 font-bold">[X]</button>` : ''}</li>`).join('');
+            
+            const btnLimpar = document.getElementById('btnLimparFinalizados');
+            const btnExportar = document.getElementById('btnExportar');
+            if (currentUser.role === 'Admin') {
+                btnLimpar.classList.remove('hidden');
+                btnExportar.classList.remove('hidden');
+            } else {
+                btnLimpar.classList.add('hidden');
+                btnExportar.classList.add('hidden');
+            }
+            
+            renderizarTabelas();
+        }
+
+        function renderizarTabelas() {
+            document.getElementById('corpoTabelaTurno').innerHTML = ocorrencias.filter(o => o.status === 'PENDENTE').map(o => `<tr>
+                <td class="p-2">${o.data}</td><td class="p-2">${o.dt}</td><td class="p-2">${o.processo}</td><td class="p-2">${o.problema}</td><td class="p-2">${o.motorista}</td><td class="p-2">${o.local}</td><td class="p-2">${o.desc}</td><td class="p-2 font-bold">${o.autor}</td>
+                <td class="p-2">
+                    <select id="statusSelect_${o.id}" class="border border-black p-1"><option value="PENDENTE" selected>Pendente</option><option value="FINALIZADO">Finalizado</option></select>
+                    <button onclick="confirmarStatus('${o.id}')" class="ml-2 bg-blue-600 text-white px-2 py-1 rounded text-xs font-bold">CONFIRMAR</button>
+                </td>
+            </tr>`).join('');
+            
+            document.getElementById('corpoTabelaFinalizado').innerHTML = ocorrencias.filter(o => o.status === 'FINALIZADO').map(o => `<tr>
+                <td class="p-2">${o.data}</td><td class="p-2">${o.dt}</td><td class="p-2">${o.processo}</td><td class="p-2">${o.problema}</td><td class="p-2">${o.motorista}</td><td class="p-2">${o.local}</td><td class="p-2 font-bold">${o.autor}</td><td class="p-2">${o.desc}</td>
+            </tr>`).join('');
+        }
+
+        function confirmarStatus(id) {
+            const select = document.getElementById('statusSelect_' + id);
+            const o = ocorrencias.find(x => x.id === id);
+            if(o) { o.status = select.value; localStorage.setItem('ocorrencias', JSON.stringify(ocorrencias)); renderizarTabelas(); }
+        }
+
+        function limparFinalizados() {
+            if (confirm("ATENÇÃO: Deseja apagar permanentemente todos os registros finalizados?")) {
+                ocorrencias = ocorrencias.filter(o => o.status !== 'FINALIZADO');
+                localStorage.setItem('ocorrencias', JSON.stringify(ocorrencias));
+                renderizarTabelas();
+            }
+        }
+
+        function exportarParaExcel() {
+            const tabela = document.querySelector("#telaFinalizado table");
+            if (tabela.rows.length <= 1) return alert("Não há registros finalizados para exportar!");
+            const wb = XLSX.utils.table_to_book(tabela, {sheet: "Finalizados"});
+            const nomeArquivo = `Ocorrencias_Finalizadas_${dataAtual.getMonth() + 1}_${dataAtual.getFullYear()}.xlsx`;
+            XLSX.writeFile(wb, nomeArquivo);
+        }
+
+        function copiarParaWhatsApp() {
+            const pendentes = ocorrencias.filter(o => o.status === 'PENDENTE');
+            if (pendentes.length === 0) return alert("Nenhuma pendência!");
+            let texto = `*${document.getElementById('tituloPrincipal').innerText} - PENDENTES*\n\n`;
+            pendentes.forEach(o => { texto += `Data: ${o.data} | Autor: ${o.autor}\nDT: ${o.dt} | Proc: ${o.processo} | Prob: ${o.problema}\nMotorista: ${o.motorista} | Local: ${o.local}\nObs: ${o.desc}\n-----------------\n`; });
+            navigator.clipboard.writeText(texto).then(() => alert("Copiado!"));
+        }
+
+        function adicionar(cat, inputId) { db[cat].push(document.getElementById(inputId).value); localStorage.setItem('configuracoes', JSON.stringify(db)); atualizarUI(); document.getElementById(inputId).value = ''; }
+        function adicionarUsuario() { if(currentUser.role !== 'Admin') return alert("Apenas Admin!"); users.push({u: document.getElementById('newU').value, p: document.getElementById('newP').value, role: document.getElementById('newRole').value}); localStorage.setItem('users', JSON.stringify(users)); atualizarUI(); }
+        function excluirUsuario(i) { users.splice(i, 1); localStorage.setItem('users', JSON.stringify(users)); atualizarUI(); }
+
+        document.getElementById('formOcorrencia').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const dt = document.getElementById('numDT').value;
+            if(dt.length !== 8) return alert("Erro: A DT deve conter exatamente 8 números.");
+            ocorrencias.push({ id: Date.now().toString(), data: new Date().toLocaleString(), autor: currentUser.u, processo: document.getElementById('sProcesso').value, dt: dt, problema: document.getElementById('sProblema').value, motorista: document.getElementById('motorista').value, local: document.getElementById('sLocal').value, desc: document.getElementById('desc').value, status: 'PENDENTE' });
+            localStorage.setItem('ocorrencias', JSON.stringify(ocorrencias));
+            renderizarTabelas();
+            e.target.reset();
+        });
+
+        atualizarUI();
+    </script>
+</body>
+</html>
